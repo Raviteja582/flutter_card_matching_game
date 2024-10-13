@@ -1,101 +1,189 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MemoryGame());
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MemoryGame extends StatelessWidget {
+  const MemoryGame({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: GameScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class CardModel {
+  final String frontAsset;
+  final String backAsset;
+  bool isFaceUp;
+  bool isMatched;
 
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  CardModel({
+    required this.frontAsset,
+    this.backAsset = 'assets/profile.jpeg',
+    this.isFaceUp = false,
+    this.isMatched = false,
+  });
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class GameScreen extends StatefulWidget {
+  @override
+  _GameScreenState createState() => _GameScreenState();
+}
 
-  void _incrementCounter() {
+class _GameScreenState extends State<GameScreen>
+    with SingleTickerProviderStateMixin {
+  final int gridSize = 4;
+  final List<CardModel> _cards = [];
+  CardModel? _firstCard;
+  CardModel? _secondCard;
+  bool _isChecking = false;
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _initializeCards();
+  }
+
+  void _initializeCards() {
+    List<String> cardImages = [
+      'assets/christ.jpg',
+      'assets/great_wall_china.jpg',
+      'assets/pyramid.jpg',
+      'assets/taj_mahal.jpg',
+    ];
+
+    cardImages = [...cardImages, ...cardImages];
+    cardImages.shuffle(Random());
+
+    _cards.clear();
+    for (String asset in cardImages) {
+      _cards.add(CardModel(frontAsset: asset));
+    }
+  }
+
+  void _resetCards() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _initializeCards();
+      _firstCard = null;
+      _secondCard = null;
+      _isChecking = false;
     });
+  }
+
+  void _onCardTap(int index) {
+    if (_isChecking || _cards[index].isFaceUp || _cards[index].isMatched) {
+      return;
+    }
+
+    setState(() {
+      _cards[index].isFaceUp = true;
+      if (_firstCard == null) {
+        _firstCard = _cards[index];
+      } else if (_secondCard == null) {
+        _secondCard = _cards[index];
+        _checkMatch();
+      }
+    });
+  }
+
+  void _checkMatch() {
+    _isChecking = true;
+    if (_firstCard!.frontAsset == _secondCard!.frontAsset) {
+      setState(() {
+        _firstCard!.isMatched = true;
+        _secondCard!.isMatched = true;
+        _firstCard = null;
+        _secondCard = null;
+        _isChecking = false;
+      });
+    } else {
+      Future.delayed(const Duration(seconds: 1), () {
+        setState(() {
+          _firstCard!.isFaceUp = false;
+          _secondCard!.isFaceUp = false;
+          _firstCard = null;
+          _secondCard = null;
+          _isChecking = false;
+        });
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Memory Game'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _resetCards,
+          )
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+      body: GridView.builder(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: gridSize,
         ),
+        itemCount: _cards.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () => _onCardTap(index),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return RotationYTransition(
+                  turns: animation,
+                  child: child,
+                );
+              },
+              child: _cards[index].isFaceUp || _cards[index].isMatched
+                  ? Image.asset(_cards[index].frontAsset,
+                      key: ValueKey(_cards[index].frontAsset))
+                  : Image.asset(_cards[index].backAsset,
+                      key: const ValueKey('back')),
+            ),
+          );
+        },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
+class RotationYTransition extends AnimatedWidget {
+  const RotationYTransition({
+    super.key,
+    required Animation<double> turns,
+    this.alignment = Alignment.center,
+    this.child,
+  }) : super(listenable: turns);
+
+  final Widget? child;
+  final Alignment alignment;
+
+  Animation<double> get turns => listenable as Animation<double>;
+
+  @override
+  Widget build(BuildContext context) {
+    final double angle = turns.value * pi;
+    return Transform(
+      transform: Matrix4.rotationY(angle),
+      alignment: alignment,
+      child: child,
     );
   }
 }
