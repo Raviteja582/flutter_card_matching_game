@@ -28,12 +28,10 @@ class CardModel {
     this.isMatched = false,
   });
 
-
   resetCards() {
     isFaceUp = false;
     isMatched = false;
   }
-
 }
 
 class GameScreen extends StatefulWidget {
@@ -51,9 +49,11 @@ class _GameScreenState extends State<GameScreen>
   bool _isGameComplete = false;
   late AnimationController _controller;
 
-  // Timer variables
+  // Timer and scoring variables
   Timer? _timer;
   int _seconds = 0;
+  int _score = 0;
+  int _matches = 0;
   List<int> _topScores = [];
 
   @override
@@ -64,7 +64,6 @@ class _GameScreenState extends State<GameScreen>
       vsync: this,
     );
     _initializeCards();
-    _startTimer();
   }
 
   void _initializeCards() {
@@ -100,6 +99,8 @@ class _GameScreenState extends State<GameScreen>
       _cards.shuffle(Random());
 
       _seconds = 0;
+      _score = 0;
+      _matches = 0;
       _startTimer();
     });
   }
@@ -129,11 +130,13 @@ class _GameScreenState extends State<GameScreen>
         _firstCard = null;
         _secondCard = null;
         _isChecking = false;
-      });
+        _score += 10;
+        _matches++;
 
-      if (_cards.every((card) => card.isMatched)) {
-        _completeGame();
-      }
+        if (_cards.every((card) => card.isMatched)) {
+          _completeGame();
+        }
+      });
     } else {
       Future.delayed(const Duration(seconds: 1), () {
         setState(() {
@@ -142,6 +145,7 @@ class _GameScreenState extends State<GameScreen>
           _firstCard = null;
           _secondCard = null;
           _isChecking = false;
+          _score -= 5; // Deduct points for a mismatch
         });
       });
     }
@@ -158,7 +162,7 @@ class _GameScreenState extends State<GameScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Congratulations!"),
-        content: Text("You completed the game in ${_seconds}s"),
+        content: Text("You completed the game in ${_seconds}s\nScore: $_score"),
         actions: [
           TextButton(
             onPressed: () {
@@ -194,17 +198,26 @@ class _GameScreenState extends State<GameScreen>
             onPressed: _resetGame,
           ),
         ],
-        backgroundColor: Colors.red, // Red background for the AppBar
+        backgroundColor: Colors.red,
       ),
       body: Container(
-        color: Colors.red, // Red background for the entire screen
+        color: Colors.red,
         child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text(
-                'Timer: ${_seconds}s',
-                style: const TextStyle(fontSize: 24, color: Colors.white),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Timer: ${_seconds}s',
+                    style: const TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+                  Text(
+                    'Score: $_score',
+                    style: const TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -212,8 +225,8 @@ class _GameScreenState extends State<GameScreen>
                 padding: const EdgeInsets.all(8.0),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: gridSize,
-                  crossAxisSpacing: 10, // Gap between columns
-                  mainAxisSpacing: 10, // Gap between rows
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                 ),
                 itemCount: _cards.length,
                 itemBuilder: (context, index) {
@@ -229,8 +242,8 @@ class _GameScreenState extends State<GameScreen>
                         );
                       },
                       child: Container(
-                        width: 100, // Fixed width for each card
-                        height: 700, // Fixed height for each card
+                        width: 80,
+                        height: 80,
                         child: _cards[index].isFaceUp || _cards[index].isMatched
                             ? Image.asset(_cards[index].frontAsset,
                                 key: ValueKey(_cards[index].frontAsset))
