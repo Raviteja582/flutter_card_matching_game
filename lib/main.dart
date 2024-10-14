@@ -9,7 +9,7 @@ class MemoryGame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       home: GameScreen(),
     );
   }
@@ -35,7 +35,10 @@ class CardModel {
 }
 
 class GameScreen extends StatefulWidget {
+  const GameScreen({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _GameScreenState createState() => _GameScreenState();
 }
 
@@ -53,7 +56,6 @@ class _GameScreenState extends State<GameScreen>
   Timer? _timer;
   int _seconds = 0;
   int _score = 0;
-  int _matches = 0;
   List<int> _topScores = [];
 
   @override
@@ -100,7 +102,6 @@ class _GameScreenState extends State<GameScreen>
 
       _seconds = 0;
       _score = 0;
-      _matches = 0;
       _startTimer();
     });
   }
@@ -131,7 +132,6 @@ class _GameScreenState extends State<GameScreen>
         _secondCard = null;
         _isChecking = false;
         _score += 10;
-        _matches++;
 
         if (_cards.every((card) => card.isMatched)) {
           _completeGame();
@@ -241,7 +241,7 @@ class _GameScreenState extends State<GameScreen>
                           child: child,
                         );
                       },
-                      child: Container(
+                      child: SizedBox(
                         width: 80,
                         height: 80,
                         child: _cards[index].isFaceUp || _cards[index].isMatched
