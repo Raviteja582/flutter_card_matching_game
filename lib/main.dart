@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'dart:math';
 
 void main() => runApp(const MemoryGame());
@@ -26,6 +27,11 @@ class CardModel {
     this.isFaceUp = false,
     this.isMatched = false,
   });
+
+  resetCards() {
+    isFaceUp = false;
+    isMatched = false;
+  }
 }
 
 class GameScreen extends StatefulWidget {
@@ -40,7 +46,13 @@ class _GameScreenState extends State<GameScreen>
   CardModel? _firstCard;
   CardModel? _secondCard;
   bool _isChecking = false;
+  bool _isGameComplete = false;
   late AnimationController _controller;
+
+  // Timer variables
+  Timer? _timer;
+  int _seconds = 0;
+  List<int> _topScores = [];
 
   @override
   void initState() {
@@ -50,6 +62,7 @@ class _GameScreenState extends State<GameScreen>
       vsync: this,
     );
     _initializeCards();
+    _startTimer();
   }
 
   void _initializeCards() {
@@ -67,14 +80,25 @@ class _GameScreenState extends State<GameScreen>
     for (String asset in cardImages) {
       _cards.add(CardModel(frontAsset: asset));
     }
+
+    _resetGame();
   }
 
-  void _resetCards() {
+  void _resetGame() {
     setState(() {
-      _initializeCards();
       _firstCard = null;
       _secondCard = null;
       _isChecking = false;
+      _isGameComplete = false;
+
+      for (int i = 0; i < _cards.length; i++) {
+        _cards[i].resetCards();
+      }
+
+      _cards.shuffle(Random());
+
+      _seconds = 0;
+      _startTimer();
     });
   }
 
@@ -104,6 +128,10 @@ class _GameScreenState extends State<GameScreen>
         _secondCard = null;
         _isChecking = false;
       });
+
+      if (_cards.every((card) => card.isMatched)) {
+        _completeGame();
+      }
     } else {
       Future.delayed(const Duration(seconds: 1), () {
         setState(() {
@@ -117,6 +145,42 @@ class _GameScreenState extends State<GameScreen>
     }
   }
 
+  void _completeGame() {
+    _isGameComplete = true;
+    _timer?.cancel();
+    _topScores.add(_seconds);
+    _topScores.sort();
+    if (_topScores.length > 10) _topScores = _topScores.sublist(0, 10);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Congratulations!"),
+        content: Text("You completed the game in ${_seconds}s"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _resetGame();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!_isGameComplete) {
+        setState(() {
+          _seconds++;
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -125,34 +189,62 @@ class _GameScreenState extends State<GameScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _resetCards,
-          )
+            onPressed: _resetGame,
+          ),
         ],
       ),
-      body: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: gridSize,
-        ),
-        itemCount: _cards.length,
-        itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () => _onCardTap(index),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return RotationYTransition(
-                  turns: animation,
-                  child: child,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              'Timer: ${_seconds}s',
+              style: const TextStyle(fontSize: 24),
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: gridSize,
+              ),
+              itemCount: _cards.length,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  onTap: () => _onCardTap(index),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 500),
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                      return RotationYTransition(
+                        turns: animation,
+                        child: child,
+                      );
+                    },
+                    child: _cards[index].isFaceUp || _cards[index].isMatched
+                        ? Image.asset(_cards[index].frontAsset,
+                            key: ValueKey(_cards[index].frontAsset))
+                        : Image.asset(_cards[index].backAsset,
+                            key: const ValueKey('back')),
+                  ),
                 );
               },
-              child: _cards[index].isFaceUp || _cards[index].isMatched
-                  ? Image.asset(_cards[index].frontAsset,
-                      key: ValueKey(_cards[index].frontAsset))
-                  : Image.asset(_cards[index].backAsset,
-                      key: const ValueKey('back')),
             ),
-          );
-        },
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                const Text(
+                  'Top 10 Scores',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                for (var i = 0; i < _topScores.length; i++)
+                  Text('${i + 1}. ${_topScores[i]}s',
+                      style: const TextStyle(fontSize: 16)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -160,6 +252,7 @@ class _GameScreenState extends State<GameScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 }
