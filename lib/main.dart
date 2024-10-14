@@ -28,10 +28,12 @@ class CardModel {
     this.isMatched = false,
   });
 
+
   resetCards() {
     isFaceUp = false;
     isMatched = false;
   }
+
 }
 
 class GameScreen extends StatefulWidget {
@@ -192,59 +194,74 @@ class _GameScreenState extends State<GameScreen>
             onPressed: _resetGame,
           ),
         ],
+        backgroundColor: Colors.red, // Red background for the AppBar
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(
-              'Timer: ${_seconds}s',
-              style: const TextStyle(fontSize: 24),
-            ),
-          ),
-          Expanded(
-            child: GridView.builder(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: gridSize,
+      body: Container(
+        color: Colors.red, // Red background for the entire screen
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                'Timer: ${_seconds}s',
+                style: const TextStyle(fontSize: 24, color: Colors.white),
               ),
-              itemCount: _cards.length,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () => _onCardTap(index),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 500),
-                    transitionBuilder:
-                        (Widget child, Animation<double> animation) {
-                      return RotationYTransition(
-                        turns: animation,
-                        child: child,
-                      );
-                    },
-                    child: _cards[index].isFaceUp || _cards[index].isMatched
-                        ? Image.asset(_cards[index].frontAsset,
-                            key: ValueKey(_cards[index].frontAsset))
-                        : Image.asset(_cards[index].backAsset,
-                            key: const ValueKey('back')),
-                  ),
-                );
-              },
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                const Text(
-                  'Top 10 Scores',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(8.0),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: gridSize,
+                  crossAxisSpacing: 10, // Gap between columns
+                  mainAxisSpacing: 10, // Gap between rows
                 ),
-                for (var i = 0; i < _topScores.length; i++)
-                  Text('${i + 1}. ${_topScores[i]}s',
-                      style: const TextStyle(fontSize: 16)),
-              ],
+                itemCount: _cards.length,
+                itemBuilder: (context, index) {
+                  return GestureDetector(
+                    onTap: () => _onCardTap(index),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 500),
+                      transitionBuilder:
+                          (Widget child, Animation<double> animation) {
+                        return RotationYTransition(
+                          turns: animation,
+                          child: child,
+                        );
+                      },
+                      child: Container(
+                        width: 100, // Fixed width for each card
+                        height: 700, // Fixed height for each card
+                        child: _cards[index].isFaceUp || _cards[index].isMatched
+                            ? Image.asset(_cards[index].frontAsset,
+                                key: ValueKey(_cards[index].frontAsset))
+                            : Image.asset(_cards[index].backAsset,
+                                key: const ValueKey('back')),
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                children: [
+                  const Text(
+                    'Top 10 Scores',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white),
+                  ),
+                  for (var i = 0; i < _topScores.length; i++)
+                    Text('${i + 1}. ${_topScores[i]}s',
+                        style:
+                            const TextStyle(fontSize: 16, color: Colors.white)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
